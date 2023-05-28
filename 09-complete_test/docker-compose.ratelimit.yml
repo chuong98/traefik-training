@@ -1,4 +1,4 @@
-version: '3'
+version: '3.8'
 
 networks:
   default:
@@ -22,13 +22,18 @@ services:
       # Mounts the Traefik static configuration inside the Traefik container
       - ./traefik.yml:/etc/traefik/traefik.yml
       - ./traefik_dynamic.yml:/etc/traefik/traefik_dynamic.yml
-    # labels:
-    #   - "traefik.enable=true"
-    #   # dashboard"
-    #   - "traefik.http.routers.traefik.rule=Host(`traefik.localhost.me`)"
-    #   - "traefik.http.routers.traefik.service=api@internal"
-    #   - "traefik.http.routers.traefik.entrypoints=web"
-    #   - "traefik.http.routers.traefik.middlewares=mdw-errorpages"
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck"]
+      interval: 10s
+      timeout: 2s
+      retries: 3
+      start_period: 5s
+    deploy:
+      labels:
+        - "traefik.enable=true"
+        # Dummy service for Swarm port detection. The port can be any valid integer value.
+        # - "traefik.http.services.dummy-svc.loadbalancer.server.port=9999"
+        - "traefik.http.services.dashboard.loadbalancer.server.port=8080"
 
   error-pages:
     image: tarampampam/error-pages:2.24.0 # Using the latest tag is highly discouraged. Please, use tags in X.Y.Z format
@@ -38,9 +43,8 @@ services:
       labels:
         - "traefik.enable=true"
         # Router
-        - "traefik.http.routers.error-pages-router.rule=HostRegexp(`{host:.+}`)"
-        - "traefik.http.routers.error-pages-router.priority=10"
-        - "traefik.http.routers.error-pages.service=error-pages"
+        - "traefik.http.routers.error-pages.rule=Host(`error.localhost`)"
+        - "traefik.http.routers.error-pages.priority=10"
         - "traefik.http.routers.error-pages.entrypoints=web"
         # Services
         - "traefik.http.services.error-pages.loadbalancer.server.port=8080"
@@ -55,11 +59,26 @@ services:
         - "traefik.enable=true"
         # Routers
         - "traefik.http.routers.catapp.rule=Host(`catapp.localhost`)"
-        - "traefik.http.routers.catapp.service=catapp"
         - "traefik.http.routers.catapp.entrypoints=web"
         - "traefik.http.routers.catapp.middlewares=mdw-errorpages@file,mdw-auth@file,mdw-compress@file,mdw-ratelimit@file"
         # Services
         - "traefik.http.services.catapp.loadbalancer.server.port=5000"
 
+  swarm-viz:
+    image: bretfisher/visualizer
+    volumes:
+        - "/var/run/docker.sock:/var/run/docker.sock"
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - "traefik.enable=true"
+        # Router
+        - "traefik.http.routers.swarm-viz.rule=Host(`swarmviz.localhost`)"
+        - "traefik.http.routers.swarm-viz.entrypoints=web"
+        - "traefik.http.routers.swarm-viz.middlewares=mdw-auth@file"
+        # Services
+        - "traefik.http.services.swarm-viz.loadbalancer.server.port=8080"
 
   

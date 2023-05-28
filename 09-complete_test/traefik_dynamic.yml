@@ -2,6 +2,15 @@
 # Middle Ware
 ################################################################
 http:
+  routers:
+    dashboard:
+      rule: Host(`localhost`) && PathPrefix(`/dashboard`)
+      service: api@internal
+      middlewares:
+        - mdw-errorpages
+        - mdw-auth
+
+  # Middle ware
   middlewares:
     # Admin User
     mdw-auth:
@@ -11,8 +20,10 @@ http:
         # Note: Use single $ instead of $$ as defined directly in Docker-Compose
         # - User: admin, password: cybercore-safie
         # - User: user, password: test123
-          - "admin:$apr1$gAQDU1EA$hurrfNLgrGidvv0ovnfa./"
-          - "user:$apr1$4wbbUhtH$Qoh6xUukB6YAkB19nGU7j/"
+        - "admin:$apr1$gAQDU1EA$hurrfNLgrGidvv0ovnfa./"
+        - "user:$apr1$4wbbUhtH$Qoh6xUukB6YAkB19nGU7j/"
+        # - "admin:$apr1$gAQDU1EA$hurrfNLgrGidvv0ovnf./"
+        # - "user:$apr1$4wbbUhtH$Qoh6xUukB6YAkB19nGU7/"
 
     # List of ip that can access the services
     mdw-ipwhitelist:
@@ -48,7 +59,8 @@ http:
     mdw-errorpages:
       errors:
         status:
-          - "400-599"
+          - "400"
+          - "402-599"
         service: "error-pages@docker"
         query: "/{status}.html"
 
