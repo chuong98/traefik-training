@@ -1,0 +1,67 @@
+version: "3.8"
+
+services:
+  traefik:
+    image: traefik:latest
+    restart: unless-stopped
+    ports:
+      - 85:80
+      - 8080:8080
+    volumes:
+      # So that Traefik can listen to the Docker events
+      - /var/run/docker.sock:/var/run/docker.sock
+       # Mounts the Traefik static configuration inside the Traefik container
+      - ./traefik.yml:/etc/traefik/traefik.yml
+
+  # Error Page service
+  error:
+    image: guillaumebriday/traefik-custom-error-pages
+    labels:
+          - "traefik.enable=true"
+          - "traefik.http.routers.error.rule=Host(`error.localhost`)"
+          - "traefik.http.routers.error.service=error"
+          - "traefik.http.services.error.loadbalancer.server.port=80"
+          # - traefik.frontend.rule=PathPrefixStrip:/wait
+          - "traefik.http.routers.error.entrypoints=web"
+
+  # server_monitor:
+  #   image: nicolargo/glances:3.3.0.2-full
+  #   restart: always
+  #   pid: host
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock
+  #   environment:
+  #     - "GLANCES_OPT=-w"
+  #     - NVIDIA_VISIBLE_DEVICES=all
+  #     - NVIDIA_DRIVER_CAPABILITIES=utility
+  #   labels:
+  #     - traefik.enable=true
+  #     - traefik.http.routers.server_monitor.rule=PathPrefix(`/`) || Path(`/server_monitoring`)
+  #     - traefik.http.middlewares.server_monitor.stripprefix.prefixes=/server_monitoring
+  #     - traefik.http.middlewares.server_monitor.stripprefix.forceSlash=false
+  #     - traefik.http.routers.server_monitor.middlewares="mdw-auth"
+  #     - traefik.http.services.server_monitor.loadbalancer.server.port=61208
+  #   ports:
+  #     - 61208:61208
+
+  #   depends_on:
+  #     - traefik
+
+  # Add the catapp service
+  catapp:
+     image: mikesir87/cats:1.0
+     labels:
+       - "traefik.enable=true"
+  # Routers
+       - "traefik.http.routers.catapp.rule=Host(`catapp.localhost`)"
+       - "traefik.http.routers.catapp.service=catapp"
+       - "traefik.http.routers.catapp.entrypoints=web"
+       - "traefik.http.routers.catapp.middlewares=mdw-compress,mdw-errorpages"
+  # Services
+       - "traefik.http.services.catapp.loadbalancer.server.port=5000"
+  # # Compress Middleware
+  #      - "traefik.http.middlewares.mdw-compress.compress=true"
+  # # Error Pages Middleware
+  #      - "traefik.http.middlewares.mdw-errorpages.errors.status=400-599"
+  #      - "traefik.http.middlewares.mdw-errorpages.errors.service=error"
+  #      - "traefik.http.middlewares.mdw-errorpages.errors.query=/{status}.html"

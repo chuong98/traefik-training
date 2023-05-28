@@ -1,0 +1,65 @@
+version: '3'
+
+networks:
+  default:
+    driver: overlay
+
+services:
+  traefik:
+    # The latest official supported Traefik docker image
+    image: traefik:latest
+    # Enables the Traefik Dashboard and tells Traefik to listen to docker
+    # enable --log.level=INFO so we can see what Traefik is doing in the log files
+    ports:
+      # Exposes port 80 for incomming web requests
+      - "85:80"
+      - "443:443"
+      # The Web UI port http://0.0.0.0:8080 (enabled by --api.insecure=true)
+      - "8085:8080"
+    volumes:
+      # So that Traefik can listen to the Docker events
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Mounts the Traefik static configuration inside the Traefik container
+      - ./traefik.yml:/etc/traefik/traefik.yml
+      - ./traefik_dynamic.yml:/etc/traefik/traefik_dynamic.yml
+    # labels:
+    #   - "traefik.enable=true"
+    #   # dashboard"
+    #   - "traefik.http.routers.traefik.rule=Host(`traefik.localhost.me`)"
+    #   - "traefik.http.routers.traefik.service=api@internal"
+    #   - "traefik.http.routers.traefik.entrypoints=web"
+    #   - "traefik.http.routers.traefik.middlewares=mdw-errorpages"
+
+  error-pages:
+    image: tarampampam/error-pages:2.24.0 # Using the latest tag is highly discouraged. Please, use tags in X.Y.Z format
+    environment:
+      TEMPLATE_NAME: orient # set the error pages templates: see available templates here https://github.com/tarampampam/error-pages
+    deploy:
+      labels:
+        - "traefik.enable=true"
+        # Router
+        - "traefik.http.routers.error-pages-router.rule=HostRegexp(`{host:.+}`)"
+        - "traefik.http.routers.error-pages-router.priority=10"
+        - "traefik.http.routers.error-pages.service=error-pages"
+        - "traefik.http.routers.error-pages.entrypoints=web"
+        # Services
+        - "traefik.http.services.error-pages.loadbalancer.server.port=8080"
+    depends_on:
+      - traefik
+
+# Add the example service
+  catapp:
+    image: mikesir87/cats:1.0
+    deploy:
+      labels:
+        - "traefik.enable=true"
+        # Routers
+        - "traefik.http.routers.catapp.rule=Host(`catapp.localhost`)"
+        - "traefik.http.routers.catapp.service=catapp"
+        - "traefik.http.routers.catapp.entrypoints=web"
+        - "traefik.http.routers.catapp.middlewares=mdw-errorpages@file,mdw-auth@file,mdw-compress@file,mdw-ratelimit@file"
+        # Services
+        - "traefik.http.services.catapp.loadbalancer.server.port=5000"
+
+
+  

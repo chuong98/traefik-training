@@ -1,0 +1,60 @@
+################################################################
+# Middle Ware
+################################################################
+http:
+  middlewares:
+    # Admin User
+    mdw-auth:
+      basicAuth:
+        users:
+        # To create hash password -> echo $(htpasswd -nb username password) 
+        # Note: Use single $ instead of $$ as defined directly in Docker-Compose
+        # - User: admin, password: cybercore-safie
+        # - User: user, password: test123
+          - "admin:$apr1$gAQDU1EA$hurrfNLgrGidvv0ovnfa./"
+          - "user:$apr1$4wbbUhtH$Qoh6xUukB6YAkB19nGU7j/"
+
+    # List of ip that can access the services
+    mdw-ipwhitelist:
+      ipWhiteList:
+        sourceRange:
+          - "192.168.111.114"
+          - "192.168.110.112"
+          - "192.168.110.111"
+          - "116.102.171.148"
+          - "72.208.167.28"
+          - "123.20.141.248"
+          - "123.20.218.202"
+          - "220.157.171.133"
+          - "192.168.111.92"
+          - "118.69.233.170"
+          - "113.173.230.157"
+          - "14.161.73.38"
+          - "27.65.50.115"
+          - "52.177.12.28"
+          - "52.175.251.223"
+          - "35.90.103.132/30"
+          - "44.208.168.68/30"
+          - "52.176.109.125"
+          - "159.28.65.41"
+          - "115.163.17.168"
+          - "183.180.106.3"
+
+    # Compress Middleware: faster response
+    mdw-compress:
+      compress: {}
+
+    # Error page
+    mdw-errorpages:
+      errors:
+        status:
+          - "400-599"
+        service: "error-pages@docker"
+        query: "/{status}.html"
+
+    # limit number request from user (average 2 request/second)
+    mdw-ratelimit:
+      rateLimit:
+        average: 2
+        burst: 2
+
